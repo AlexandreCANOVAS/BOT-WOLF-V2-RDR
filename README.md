@@ -1,6 +1,6 @@
 # **PROJET BOT RP RED DEAD REDEMPTION**
 
-<img src="./assets/logoServeur.png" alt="Image du projet" width="800" height="800">
+<img src="./assets/logoServeur.png" alt="Image du projet" width="600" height="600">
 
 ## **Présentation du projet**
 

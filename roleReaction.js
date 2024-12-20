@@ -26,4 +26,4 @@ module.exports.sendMessage = (client) => {
   } else {
     console.log('Le salon spécifié n\'a pas été trouvé.');
   }
-};
+}; 
