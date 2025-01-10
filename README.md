@@ -46,9 +46,21 @@ L'objectif principal est de créer le bot RP Red Dead Redemption le plus complet
 
 Ce projet a pour but de rendre les sessions RP plus immersives et organisées, tout en apportant une gestion plus fluide des éléments clés du jeu. N'hésitez pas à rejoindre le projet et à contribuer pour faire de ce bot l'outil ultime pour tous les serveurs RP Red Dead Redemption !
 
-## **Dernière mise à jour effectuée 20.12.2024**
+## **Comment utiliser le bot**
 
-Ajout d'un événemment memberAdd et memberRemove pour les personnes qui arrivent et qui partent du serveur
+installer les dépendances 
+```
+npm i 
+```
+
+créer un `.env` avec dedans la propriété `DISCORD_TOKEN=` puis faire la commande 
+```
+node index.js
+```
+
+## **Dernière mise à jour effectuée 10.01.2025**
+
+Suppression module_nodes 
 
 Précédente Mise à jour : WOLF RP V2.2.1 (17.12.2024)  
-Mise à jour : WOLF RP V2.2.2 (20.12.2024)
+Mise à jour : WOLF RP V2.2.2 (10.01.2025)
