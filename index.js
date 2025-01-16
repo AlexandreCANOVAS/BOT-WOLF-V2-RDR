@@ -1,61 +1,132 @@
 require('dotenv').config();
-const { Client, GatewayIntentBits } = require('discord.js');
-const sessionCommand = require('./sessionCommand'); // Import de la commande session
-const propositionSessionCommand = require('./propositionSessionCommand'); // Import de la commande proposition session
-const lancementCommand = require('./lancementCommand.js');
-const clotureCommand = require('./clotureCommand.js');
-const voteTopServeur = require('./voteTopServeur');  // Importer la fonctionnalité de vote
-const guildMemberEvents = require('../BOT-WOLF-V2-RDR/events/memberAddRemove.js');
-const roleReaction = require('./roleReaction');
-const acceptCommand = require('./accept'); // Import de la commande 'accepter' (dans le même répertoire)
+const { Client, GatewayIntentBits, Collection } = require('discord.js');
 
-const TOKEN = process.env.DISCORD_TOKEN; // Charge le token depuis les variables d'environnement
-const PREFIX = '-'; // Préfixe pour les commandes
+// -------------------------------------------------------------------------Import des commandes et fonctionnalités------------------------------------------------------------
+
+const sessionCommand = require('./commands/sessionCommand');
+const propositionSessionCommand = require('./commands/propositionSessionCommand');
+const lancementCommand = require('./commands/lancementCommand');
+const clotureCommand = require('./commands/clotureCommand');
+const voteTopServeur = require('./features/voteTopServeur');
+const guildMemberEvents = require('./events/memberAddRemove');
+const roleReaction = require('./features/roleReaction');
+const ticketHandler = require('./features/ticketHandler');
+const acceptCommand = require('./commands/accept')
+
+// ----------------------------------------------------------------------------------------------Constantes-----------------------------------------------------------------------------
+
+const TOKEN = process.env.DISCORD_TOKEN;
+const PREFIX = '-';
+const ROLES = {
+  STAFF: '💎 | Staff',
+  RP_ECRIT: '📝 | RP écrit',
+  IMMIGRE: '🗺| Immigré',
+  RESIDENT: '🏠| Résident',
+  RP_VOCAL: '🎙 | RP vocal'
+};
+
+// -------------------------------------------------------------------------------------Création du client Discord--------------------------------------------------------------------------
 
 const client = new Client({
   intents: [
-    GatewayIntentBits.Guilds,              // Permet d'interagir avec les serveurs
-    GatewayIntentBits.GuildMessages,       // Permet de lire et répondre aux messages
-    GatewayIntentBits.MessageContent,      // Permet de lire le contenu des messages
-    GatewayIntentBits.GuildMembers,        // Permet de gérer les rôles et membres du serveur
-    GatewayIntentBits.GuildMessageReactions  // Pour gérer les réactions
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.MessageContent,
+    GatewayIntentBits.GuildMembers,
+    GatewayIntentBits.GuildMessageReactions,
   ],
 });
 
-// Lors de la connexion du bot
+client.commands = new Collection();
+
+// -----------------------------------------------------------------------------------Initialisation des commandes----------------------------------------------------------------------------
+
+function initializeCommands() {
+  client.commands.set('session', sessionCommand);
+  client.commands.set('proposition', propositionSessionCommand);
+  client.commands.set('clôture', clotureCommand);
+  client.commands.set('lancement', lancementCommand);
+  client.commands.set('accepter', acceptCommand);
+
+}
+
+// -------------------------------------------------------------------------------Fonction d'initialisation du bot----------------------------------------------------------------------------
+
 client.once('ready', () => {
   console.log(`Bot connecté en tant que ${client.user.tag}`);
-  voteTopServeur.startRecurringMessages(client);  // Démarrer l'envoi récurrent des messages
-  roleReaction.sendMessage(client);  // Envoie le message avec la réaction
+  initializeCommands();
+  voteTopServeur.startRecurringMessages(client);
+  roleReaction.sendMessage(client);
+  ticketHandler.sendTicketMessage(client);
 });
 
-client.on('messageReactionAdd', async (reaction, user) => {
+// --------------------------------------------------------------------------Gestion des interactions (boutons, réactions)-----------------------------------------------------------------------
+
+client.on('interactionCreate', async (interaction) => {
+  if (!interaction.isButton()) return;
+
   try {
-    if (user.bot) return;
-
-    if (!reaction.message.guild) return;
-
-    const member = await reaction.message.guild.members.fetch(user.id);
-
-    if (!member) {
-      console.log(`Membre introuvable pour l'utilisateur ${user.tag}`);
-      return;
+    if (interaction.customId === 'create_ticket') {
+      await ticketHandler.createTicket(interaction);
+    } else if (interaction.customId === 'close_ticket') {
+      await handleCloseTicket(interaction);
     }
+  } catch (error) {
+    console.error('Erreur lors de la gestion de l\'interaction:', error);
+    await interaction.reply({
+      content: 'Une erreur est survenue lors du traitement de votre demande.',
+      ephemeral: true
+    });
+  }
+});
+
+async function handleCloseTicket(interaction) {
+  if (!interaction.member.roles.cache.some(role => role.name === ROLES.STAFF)) {
+    return interaction.reply({
+      content: "Désolé, vous n'avez pas la permission de fermer ce ticket.",
+      ephemeral: true,
+    });
+  }
+
+  await interaction.reply({
+    content: "Le ticket va être fermé.",
+    ephemeral: true,
+  });
+
+  try {
+    const ticketChannel = interaction.channel;
+    await ticketChannel.send("Ce ticket va maintenant être fermé. Si vous avez besoin d'aide supplémentaire, ouvrez un nouveau ticket.");
+    await ticketChannel.delete();
+  } catch (error) {
+    console.error('Erreur lors de la fermeture du ticket :', error);
+    await interaction.followUp({
+      content: "Une erreur est survenue lors de la fermeture du ticket.",
+      ephemeral: true,
+    });
+  }
+}
+
+// ---------------------------------------------------------------------------Gestion des réactions d'ajout de rôle---------------------------------------------------------------------
+
+client.on('messageReactionAdd', async (reaction, user) => {
+  if (user.bot || !reaction.message.guild) return;
+
+  try {
+    await reaction.fetch();
+    const member = await reaction.message.guild.members.fetch(user.id);
+    if (!member) return;
 
     if (reaction.emoji.name === '📝') {
-      const role = reaction.message.guild.roles.cache.find(r => r.name === '📝 | RP écrit');
-      if (role) {
-        await member.roles.add(role);
-        console.log(`${user.tag} a reçu le rôle 📝 | RP écrit`);
+      const role = reaction.message.guild.roles.cache.find(r => r.name === ROLES.RP_ECRIT);
+      if (!role) return console.log(`Le rôle '${ROLES.RP_ECRIT}' n'a pas été trouvé.`);
 
-        try {
-          await member.send(`🎉 Bonjour ${user.username}, vous avez reçu le rôle **📝 | RP écrit** ! 🎉`);
-          console.log(`Message privé envoyé à ${user.tag}`);
-        } catch (error) {
-          console.error(`Erreur lors de l'envoi du message privé à ${user.tag}:`, error);
-        }
-      } else {
-        console.log("Le rôle '📝 | RP écrit' n'a pas été trouvé.");
+      await member.roles.add(role);
+      console.log(`${user.tag} a reçu le rôle ${ROLES.RP_ECRIT}`);
+
+      try {
+        await member.send(`🎉 Bonjour ${user.username}, vous avez reçu le rôle **${ROLES.RP_ECRIT}** ! Vous pouvez maintenant profiter du RP et on vous souhaite de vivre une expérience inoubliable !🎉`);
+      } catch (error) {
+        console.error(`Erreur lors de l'envoi du message privé à ${user.tag}:`, error);
       }
     }
   } catch (error) {
@@ -63,39 +134,81 @@ client.on('messageReactionAdd', async (reaction, user) => {
   }
 });
 
-client.on('guildMemberAdd', (member) => {
-  guildMemberEvents.execute(member, 'add');
-});
+// ------------------------------------------------------------------------------Gestion des membres entrant et sortant------------------------------------------------------------------
 
-client.on('guildMemberRemove', (member) => {
-  guildMemberEvents.execute(member, 'remove');
-});
+client.on('guildMemberAdd', (member) => guildMemberEvents.execute(member, 'add'));
+client.on('guildMemberRemove', (member) => guildMemberEvents.execute(member, 'remove'));
 
-// Écoute des messages entrants
+// ------------------------------------------------------------------------------------Gestion des commandes-------------------------------------------------------------------------------
+
 client.on('messageCreate', async (message) => {
-  if (message.author.bot) return;
+  if (message.author.bot || !message.content.startsWith(PREFIX)) return;
 
-  if (message.content.startsWith(`${PREFIX}clôture`)) {
-    await clotureCommand.execute(message);
+  try {
+    await message.delete();
+  } catch (error) {
+    console.error('Erreur lors de la suppression du message:', error);
   }
 
-  if (message.content.startsWith(`${PREFIX}lancement`)) {
-    await lancementCommand.execute(message);
-  }
+  const args = message.content.slice(PREFIX.length).trim().split(/ +/);
+  const commandName = args.shift().toLowerCase();
 
-  if (message.content.startsWith(`${PREFIX}proposition session`)) {
-    await propositionSessionCommand.execute(message);
-  }
+  const command = client.commands.get(commandName);
+  if (!command) return;
 
-  // Commande acceptée
-  if (message.content.startsWith(`${PREFIX}accepter`)) {
-    await acceptCommand.execute(message); // Appelle la fonction de la commande 'accepter'
-  }
-
-  if (message.content.startsWith(`${PREFIX}session`)) {
-    await sessionCommand.execute(message);
+  try {
+    if (commandName === 'proposition' && args[0] === 'session') {
+      await propositionSessionCommand.execute(message);
+    } else if (commandName === 'accepter') {
+      await handleAcceptCommand(message);
+    } else {
+      await command.execute(message, args);
+    }
+  } catch (error) {
+    console.error(`Erreur lors de l'exécution de la commande ${commandName}:`, error);
+    await message.channel.send('Une erreur est survenue lors de l\'exécution de la commande.');
   }
 });
 
-// Connexion du bot
-client.login(TOKEN);
+// --------------------------------------------------------------------------------Fonction pour gérer l'acceptation des candidatures-------------------------------------------------------------------------------------------------
+
+async function handleAcceptCommand(message) {
+  const member = message.mentions.members.first();
+  if (!member) return message.reply('Veuillez mentionner un membre valide pour accepter la candidature.');
+
+  const roleImmigre = message.guild.roles.cache.find((role) => role.name === ROLES.IMMIGRE);
+  const roleResident = message.guild.roles.cache.find((role) => role.name === ROLES.RESIDENT);
+  const roleRPVocal = message.guild.roles.cache.find((role) => role.name === ROLES.RP_VOCAL);
+
+  if (!roleImmigre || !roleResident || !roleRPVocal) {
+    return message.reply(`Les rôles "${ROLES.IMMIGRE}", "${ROLES.RESIDENT}" ou "${ROLES.RP_VOCAL}" sont introuvables sur ce serveur.`);
+  }
+
+  try {
+    if (member.roles.cache.has(roleImmigre.id)) {
+      await member.roles.remove(roleImmigre);
+    }
+    await member.roles.add([roleResident, roleRPVocal]);
+
+    await member.send(
+      `Bonjour ${member.user.username},\n\nVous avez été accepté dans le serveur et avez reçu les rôles \`${ROLES.RESIDENT}\` et \`${ROLES.RP_VOCAL}\` !\n\nBienvenue parmi nous et profitez pleinement de l'expérience RP !`
+    );
+
+    await message.channel.send(`Une candidature a été acceptée et les rôles \`${ROLES.RESIDENT}\` et \`${ROLES.RP_VOCAL}\` ont été attribués à ${member.user.tag}. :white_check_mark:`);
+  } catch (error) {
+    console.error('Erreur lors de l\'attribution des rôles:', error);
+    await message.reply("Une erreur est survenue lors de l'attribution des rôles.");
+  }
+}
+
+// ----------------------------------------------------------------------------------------Gestion des erreurs globales--------------------------------------------------------------------------------------------------------------
+
+client.on('error', error => {
+  console.error('Erreur globale du client Discord:', error);
+});
+
+// --------------------------------------------------------------------------------------------Connexion du bot------------------------------------------------------------------------------------------------------------------
+
+client.login(TOKEN).catch(error => {
+  console.error('Erreur lors de la connexion du bot:', error);
+});
