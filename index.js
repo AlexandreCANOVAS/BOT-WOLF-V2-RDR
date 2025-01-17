@@ -12,6 +12,7 @@ const roleReaction = require('./features/roleReaction');
 const ticketHandler = require('./features/ticketHandler');
 const telegramHandler = require('./features/telegramHandler');
 const acceptCommand = require('./commands/accept');
+const ticketMediator = require('./features/ticketMediator');
 
 // Constantes
 const TOKEN = process.env.DISCORD_TOKEN;
@@ -54,6 +55,7 @@ client.once('ready', () => {
   roleReaction.sendMessage(client);
   ticketHandler.sendTicketMessage(client);
   telegramHandler.sendTelegramMessage(client);
+  ticketMediator.sendTicketMessage(client);
 });
 
 // Gestion des interactions
@@ -78,6 +80,14 @@ client.on('interactionCreate', async (interaction) => {
       content: 'Une erreur est survenue lors du traitement de votre demande.',
       ephemeral: true
     });
+  }
+
+  if (interaction.isButton()) {
+    if (interaction.customId === 'create_mediateur_ticket') {
+      await ticketMediator.createTicket(interaction);
+    } else if (interaction.customId === 'close_mediateur_ticket') {
+      await ticketMediator.closeTicket(interaction);
+    }
   }
 });
 
