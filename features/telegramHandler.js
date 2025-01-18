@@ -4,6 +4,8 @@ const TELEGRAM_CHANNEL_ID = '1060457354501574706';
 const TELEGRAM_CATEGORY_ID = '1060456399877972008';
 const STAFF_ROLE_ID = '1059787646051819540';
 
+
+
 const createEmbed = (title, description) => {
   return new EmbedBuilder()
     .setColor('#6b3d22')
