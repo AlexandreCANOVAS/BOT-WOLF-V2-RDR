@@ -16,6 +16,7 @@ const ticketMediator = require('./features/ticketMediator');
 const anonymousMessageCommand = require('./commands/anonymousMessage');
 const logs = require('./events/logs');
 const logAnonymous = require('./events/logAnonymous');
+const messageXp = require('./events/messageXp');
 
 // Constantes
 const TOKEN = process.env.DISCORD_TOKEN;
@@ -62,6 +63,7 @@ client.once('ready', () => {
   ticketMediator.sendTicketMessage(client);
   logs.execute(client);
   logAnonymous.execute(client);
+  messageXp.execute(client);
 });
 
 // Gestion des interactions
