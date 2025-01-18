@@ -14,6 +14,8 @@ const telegramHandler = require('./features/telegramHandler');
 const acceptCommand = require('./commands/accept');
 const ticketMediator = require('./features/ticketMediator');
 const anonymousMessageCommand = require('./commands/anonymousMessage');
+const logs = require('./events/logs');
+const logAnonymous = require('./events/logAnonymous');
 
 // Constantes
 const TOKEN = process.env.DISCORD_TOKEN;
@@ -58,6 +60,8 @@ client.once('ready', () => {
   ticketHandler.sendTicketMessage(client);
   telegramHandler.sendTelegramMessage(client);
   ticketMediator.sendTicketMessage(client);
+  logs.execute(client);
+  logAnonymous.execute(client);
 });
 
 // Gestion des interactions
