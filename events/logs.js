@@ -8,16 +8,19 @@ module.exports = {
 
     const createEmbed = (title, color, description, fields = []) => {
       return new EmbedBuilder()
-        .setTitle(`📝 ${title}`)
+        .setTitle(`🔍 ${title}`)
         .setColor(color)
         .setDescription(description)
         .addFields(fields)
-        .setTimestamp()
-        .setFooter({ text: 'Système de logs' });
+        .setFooter({ 
+          text: 'Système de Surveillance du Serveur', 
+          iconURL: client.user.displayAvatarURL() 
+        })
+        .setTimestamp();
     };
 
     client.on('channelCreate', channel => {
-      const embed = createEmbed('Nouveau canal créé', '#00FF00', 'Un nouveau canal a été ajouté au serveur.', [
+      const embed = createEmbed('Nouveau Canal Créé', '#00FF00', `Un nouveau canal a été ajouté au serveur : ${channel}.`, [
         { name: '📛 Nom', value: channel.name, inline: true },
         { name: '🏷️ Type', value: channel.type, inline: true },
         { name: '🆔 ID', value: channel.id, inline: true }
@@ -26,7 +29,7 @@ module.exports = {
     });
 
     client.on('channelDelete', channel => {
-      const embed = createEmbed('Canal supprimé', '#FF0000', 'Un canal a été supprimé du serveur.', [
+      const embed = createEmbed('Canal Supprimé', '#FF0000', 'Un canal a été supprimé du serveur.', [
         { name: '📛 Nom', value: channel.name, inline: true },
         { name: '🏷️ Type', value: channel.type, inline: true },
         { name: '🆔 ID', value: channel.id, inline: true }
@@ -35,44 +38,29 @@ module.exports = {
     });
 
     client.on('guildMemberAdd', member => {
-      const embed = createEmbed('Nouveau membre', '#00FF00', `${member.user.tag} a rejoint le serveur.`, [
+      const embed = createEmbed('Nouveau Membre', '#00FF00', `${member.user.tag} a rejoint le serveur.`, [
         { name: '👤 Membre', value: member.user.tag, inline: true },
         { name: '🆔 ID', value: member.id, inline: true },
-        { name: '📅 Compte créé le', value: member.user.createdAt.toLocaleDateString(), inline: true }
+        { name: '📅 Compte créé le', value: `<t:${Math.floor(member.user.createdAt / 1000)}:F>`, inline: true }
       ]);
       logChannel.send({ embeds: [embed] });
     });
 
     client.on('guildMemberRemove', member => {
-      const embed = createEmbed('Membre parti', '#FF0000', `${member.user.tag} a quitté le serveur.`, [
+      const embed = createEmbed('Membre Parti', '#FF0000', `${member.user.tag} a quitté le serveur.`, [
         { name: '👤 Membre', value: member.user.tag, inline: true },
         { name: '🆔 ID', value: member.id, inline: true },
-        { name: '📅 A rejoint le', value: member.joinedAt.toLocaleDateString(), inline: true }
-      ]);
-      logChannel.send({ embeds: [embed] });
-    });
-
-    client.on('guildBanAdd', ban => {
-      const embed = createEmbed('Membre banni', '#FF0000', `${ban.user.tag} a été banni du serveur.`, [
-        { name: '👤 Membre', value: ban.user.tag, inline: true },
-        { name: '🆔 ID', value: ban.user.id, inline: true }
-      ]);
-      logChannel.send({ embeds: [embed] });
-    });
-
-    client.on('guildBanRemove', ban => {
-      const embed = createEmbed('Membre débanni', '#00FF00', `${ban.user.tag} a été débanni du serveur.`, [
-        { name: '👤 Membre', value: ban.user.tag, inline: true },
-        { name: '🆔 ID', value: ban.user.id, inline: true }
+        { name: '📅 A rejoint le', value: `<t:${Math.floor(member.joinedAt / 1000)}:F>`, inline: true }
       ]);
       logChannel.send({ embeds: [embed] });
     });
 
     client.on('messageDelete', message => {
       if (message.author.bot) return;
-      const embed = createEmbed('Message supprimé', '#FF0000', 'Un message a été supprimé.', [
+      const embed = createEmbed('Message Supprimé', '#FF0000', `Un message a été supprimé dans ${message.channel}.`, [
         { name: '👤 Auteur', value: message.author.tag, inline: true },
-        { name: '📝 Contenu', value: message.content.substring(0, 1024), inline: false }
+        { name: '📍 Salon', value: `#${message.channel.name}`, inline: true },
+        { name: '💬 Contenu', value: `\`\`\`${message.content.substring(0, 1000)}\`\`\`` }
       ]);
       logChannel.send({ embeds: [embed] });
     });
@@ -80,16 +68,17 @@ module.exports = {
     client.on('messageUpdate', (oldMessage, newMessage) => {
       if (oldMessage.author.bot) return;
       if (oldMessage.content === newMessage.content) return;
-      const embed = createEmbed('Message modifié', '#FFFF00', 'Un message a été modifié.', [
+      const embed = createEmbed('Message Modifié', '#FFFF00', `Un message a été modifié dans ${oldMessage.channel}.`, [
         { name: '👤 Auteur', value: oldMessage.author.tag, inline: true },
-        { name: '📜 Ancien contenu', value: oldMessage.content.substring(0, 1024), inline: false },
-        { name: '📝 Nouveau contenu', value: newMessage.content.substring(0, 1024), inline: false }
+        { name: '📍 Salon', value: `#${oldMessage.channel.name}`, inline: true },
+        { name: '📜 Ancien contenu', value: `\`\`\`${oldMessage.content.substring(0, 500)}\`\`\`` },
+        { name: '📝 Nouveau contenu', value: `\`\`\`${newMessage.content.substring(0, 500)}\`\`\`` }
       ]);
       logChannel.send({ embeds: [embed] });
     });
 
     client.on('roleCreate', role => {
-      const embed = createEmbed('Nouveau rôle créé', '#00FF00', 'Un nouveau rôle a été créé sur le serveur.', [
+      const embed = createEmbed('Nouveau Rôle Créé', '#00FF00', 'Un nouveau rôle a été créé sur le serveur.', [
         { name: '📛 Nom', value: role.name, inline: true },
         { name: '🆔 ID', value: role.id, inline: true },
         { name: '🎨 Couleur', value: role.hexColor, inline: true }
@@ -98,7 +87,7 @@ module.exports = {
     });
 
     client.on('roleDelete', role => {
-      const embed = createEmbed('Rôle supprimé', '#FF0000', 'Un rôle a été supprimé du serveur.', [
+      const embed = createEmbed('Rôle Supprimé', '#FF0000', 'Un rôle a été supprimé du serveur.', [
         { name: '📛 Nom', value: role.name, inline: true },
         { name: '🆔 ID', value: role.id, inline: true },
         { name: '🎨 Couleur', value: role.hexColor, inline: true }
