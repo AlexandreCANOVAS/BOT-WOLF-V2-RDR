@@ -38,7 +38,7 @@ module.exports = {
     }
 
     try {
-      await message.delete();
+      
       console.log(`Le message de la commande '-accepter' a été supprimé avec succès.`);
     } catch (error) {
       console.error('Erreur lors de la suppression du message :', error);
