@@ -66,16 +66,43 @@ module.exports = {
     });
 
     client.on('messageUpdate', (oldMessage, newMessage) => {
-      if (oldMessage.author.bot) return;
-      if (oldMessage.content === newMessage.content) return;
-      const embed = createEmbed('Message Modifié', '#FFFF00', `Un message a été modifié dans ${oldMessage.channel}.`, [
-        { name: '👤 Auteur', value: oldMessage.author.tag, inline: true },
-        { name: '📍 Salon', value: `#${oldMessage.channel.name}`, inline: true },
-        { name: '📜 Ancien contenu', value: `\`\`\`${oldMessage.content.substring(0, 500)}\`\`\`` },
-        { name: '📝 Nouveau contenu', value: `\`\`\`${newMessage.content.substring(0, 500)}\`\`\`` }
-      ]);
-      logChannel.send({ embeds: [embed] });
-    });
+        if (oldMessage.author.bot) return;
+        if (oldMessage.content === newMessage.content) return;
+      
+        const highlightDifferences = (oldContent, newContent) => {
+          let oldHighlighted = oldContent;
+          let newHighlighted = newContent;
+          
+          const words = oldContent.split(' ');
+          words.forEach(word => {
+            if (!newContent.includes(word)) {
+              oldHighlighted = oldHighlighted.replace(word, `**[${word}]**`);
+            }
+          });
+          
+          const newWords = newContent.split(' ');
+          newWords.forEach(word => {
+            if (!oldContent.includes(word)) {
+              newHighlighted = newHighlighted.replace(word, `**[${word}]**`);
+            }
+          });
+          
+          return [oldHighlighted, newHighlighted];
+        };
+      
+        const [oldFormatted, newFormatted] = highlightDifferences(oldMessage.content, newMessage.content);
+      
+        const embed = createEmbed('Message Modifié', '#FFFF00', `Un message a été modifié dans ${oldMessage.channel}.`, [
+          { name: '👤 Auteur', value: oldMessage.author.tag, inline: true },
+          { name: '📍 Salon', value: `#${oldMessage.channel.name}`, inline: true },
+          { name: '📜 Ancien contenu', value: oldFormatted.substring(0, 1024) },
+          { name: '📝 Nouveau contenu', value: newFormatted.substring(0, 1024) }
+        ]);
+        logChannel.send({ embeds: [embed] });
+      });
+      
+      
+      
 
     client.on('roleCreate', role => {
       const embed = createEmbed('Nouveau Rôle Créé', '#00FF00', 'Un nouveau rôle a été créé sur le serveur.', [
