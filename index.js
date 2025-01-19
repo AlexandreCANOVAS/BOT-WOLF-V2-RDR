@@ -1,5 +1,6 @@
 require('dotenv').config();
 const { Client, GatewayIntentBits, Collection } = require('discord.js');
+const { init } = require('./database.js');
 
 // Imports des commandes et fonctionnalités
 const sessionCommand = require('./commands/sessionCommand');
@@ -17,6 +18,8 @@ const anonymousMessageCommand = require('./commands/anonymousMessage');
 const logs = require('./events/logs');
 const logAnonymous = require('./events/logAnonymous');
 const messageXp = require('./events/messageXp');
+const rangCommand = require('./commands/rangCommand');
+const xpCommand = require('./commands/xpCommand');
 
 // Constantes
 const TOKEN = process.env.DISCORD_TOKEN;
@@ -50,50 +53,133 @@ function initializeCommands() {
   client.commands.set('lancement', lancementCommand);
   client.commands.set('accepter', acceptCommand);
   client.commands.set('anonymous', anonymousMessageCommand);
+  client.commands.set('rang', rangCommand);
+  client.commands.set('xp', xpCommand);
 }
 
-// Initialisation du bot
-client.once('ready', () => {
-  console.log(`Bot connecté en tant que ${client.user.tag}`);
-  initializeCommands();
-  voteTopServeur.startRecurringMessages(client);
-  roleReaction.sendMessage(client);
-  ticketHandler.sendTicketMessage(client);
-  telegramHandler.sendTelegramMessage(client);
-  ticketMediator.sendTicketMessage(client);
-  logs.execute(client);
-  logAnonymous.execute(client);
-  messageXp.execute(client);
-});
-
-// Gestion des interactions
-client.on('interactionCreate', async (interaction) => {
-  if (!interaction.isButton() && !interaction.isStringSelectMenu()) return;
-
+async function startBot() {
   try {
-    if (interaction.customId === 'create_ticket') {
-      await ticketHandler.createTicket(interaction);
-    } else if (interaction.customId === 'close_ticket') {
-      await handleCloseTicket(interaction);
-    } else if (interaction.customId === 'create_telegram_ticket') {
-      await telegramHandler.handleTelegramTicketCreation(interaction);
-    } else if (interaction.customId.startsWith('select_telegram_recipient_')) {
-      await telegramHandler.createTelegramTicket(interaction);
-    } else if (interaction.customId === 'close_telegram_ticket') {
-      await telegramHandler.closeTelegramTicket(interaction);
-    } else if (interaction.customId === 'create_mediateur_ticket') {
-      await ticketMediator.createTicket(interaction);
-    } else if (interaction.customId === 'close_mediateur_ticket') {
-      await ticketMediator.closeTicket(interaction);
-    }
-  } catch (error) {
-    console.error('Erreur lors de la gestion de l\'interaction:', error);
-    await interaction.reply({
-      content: 'Une erreur est survenue lors du traitement de votre demande.',
-      ephemeral: true
+    const db = await init();
+
+    // Initialisation du bot
+    client.once('ready', () => {
+      console.log(`Bot connecté en tant que ${client.user.tag}`);
+      initializeCommands();
+      voteTopServeur.startRecurringMessages(client);
+      roleReaction.sendMessage(client);
+      ticketHandler.sendTicketMessage(client);
+      telegramHandler.sendTelegramMessage(client);
+      ticketMediator.sendTicketMessage(client);
+      logs.execute(client);
+      logAnonymous.execute(client);
+      messageXp.execute(client, db);
     });
+
+    // Gestion des interactions
+    client.on('interactionCreate', async (interaction) => {
+      if (!interaction.isButton() && !interaction.isStringSelectMenu()) return;
+
+      try {
+        if (interaction.customId === 'create_ticket') {
+          await ticketHandler.createTicket(interaction);
+        } else if (interaction.customId === 'close_ticket') {
+          await handleCloseTicket(interaction);
+        } else if (interaction.customId === 'create_telegram_ticket') {
+          await telegramHandler.handleTelegramTicketCreation(interaction);
+        } else if (interaction.customId.startsWith('select_telegram_recipient_')) {
+          await telegramHandler.createTelegramTicket(interaction);
+        } else if (interaction.customId === 'close_telegram_ticket') {
+          await telegramHandler.closeTelegramTicket(interaction);
+        } else if (interaction.customId === 'create_mediateur_ticket') {
+          await ticketMediator.createTicket(interaction);
+        } else if (interaction.customId === 'close_mediateur_ticket') {
+          await ticketMediator.closeTicket(interaction);
+        }
+      } catch (error) {
+        console.error('Erreur lors de la gestion de l\'interaction:', error);
+        await interaction.reply({
+          content: 'Une erreur est survenue lors du traitement de votre demande.',
+          ephemeral: true
+        });
+      }
+    });
+
+    // Gestion des réactions d'ajout de rôle
+    client.on('messageReactionAdd', async (reaction, user) => {
+      if (user.bot || !reaction.message.guild) return;
+
+      try {
+        await reaction.fetch();
+        const member = await reaction.message.guild.members.fetch(user.id);
+        if (!member) return;
+
+        if (reaction.emoji.name === '📝') {
+          const role = reaction.message.guild.roles.cache.find(r => r.name === ROLES.RP_ECRIT);
+          if (!role) return console.log(`Le rôle '${ROLES.RP_ECRIT}' n'a pas été trouvé.`);
+
+          await member.roles.add(role);
+          console.log(`${user.tag} a reçu le rôle ${ROLES.RP_ECRIT}`);
+
+          try {
+            await member.send(`🎉 Bonjour ${user.username}, vous avez reçu le rôle **${ROLES.RP_ECRIT}** ! Vous pouvez maintenant profiter du RP et on vous souhaite de vivre une expérience inoubliable !🎉`);
+          } catch (error) {
+            console.error(`Erreur lors de l'envoi du message privé à ${user.tag}:`, error);
+          }
+        }
+      } catch (error) {
+        console.error('Erreur lors de l\'ajout de la réaction :', error);
+      }
+    });
+
+    // Gestion des membres entrant et sortant
+    client.on('guildMemberAdd', (member) => guildMemberEvents.execute(member, 'add'));
+    client.on('guildMemberRemove', (member) => guildMemberEvents.execute(member, 'remove'));
+
+    // Gestion des commandes
+    client.on('messageCreate', async (message) => {
+      if (message.author.bot || !message.content.startsWith(PREFIX)) return;
+
+      const args = message.content.slice(PREFIX.length).trim().split(/ +/);
+      const commandName = args.shift().toLowerCase();
+
+      const command = client.commands.get(commandName);
+      if (!command) return;
+
+      try {
+        if (commandName === 'xp' || commandName === 'rang') {
+          await command.execute(message, args, db);
+        } else if (typeof command.execute === 'function') {
+          await command.execute(message, args);
+        } else {
+          console.error(`La commande ${commandName} n'a pas de fonction execute.`);
+          await message.channel.send('Cette commande n\'est pas correctement configurée.');
+          return;
+        }
+        
+        if (message.deletable) {
+          try {
+            await message.delete();
+          } catch (deleteError) {
+            console.error(`Erreur lors de la suppression du message de commande: ${deleteError}`);
+          }
+        }
+      } catch (error) {
+        console.error(`Erreur lors de l'exécution de la commande ${commandName}:`, error);
+        await message.channel.send('Une erreur est survenue lors de l\'exécution de la commande.');
+      }
+    });
+
+    // Gestion des erreurs globales
+    client.on('error', error => {
+      console.error('Erreur globale du client Discord:', error);
+    });
+
+    // Connexion du bot
+    await client.login(TOKEN);
+  } catch (error) {
+    console.error('Erreur lors du démarrage du bot:', error);
   }
-});
+}
 
 async function handleCloseTicket(interaction) {
   if (!interaction.member.roles.cache.some(role => role.name === ROLES.STAFF)) {
@@ -121,71 +207,5 @@ async function handleCloseTicket(interaction) {
   }
 }
 
-// Gestion des réactions d'ajout de rôle
-client.on('messageReactionAdd', async (reaction, user) => {
-  if (user.bot || !reaction.message.guild) return;
-
-  try {
-    await reaction.fetch();
-    const member = await reaction.message.guild.members.fetch(user.id);
-    if (!member) return;
-
-    if (reaction.emoji.name === '📝') {
-      const role = reaction.message.guild.roles.cache.find(r => r.name === ROLES.RP_ECRIT);
-      if (!role) return console.log(`Le rôle '${ROLES.RP_ECRIT}' n'a pas été trouvé.`);
-
-      await member.roles.add(role);
-      console.log(`${user.tag} a reçu le rôle ${ROLES.RP_ECRIT}`);
-
-      try {
-        await member.send(`🎉 Bonjour ${user.username}, vous avez reçu le rôle **${ROLES.RP_ECRIT}** ! Vous pouvez maintenant profiter du RP et on vous souhaite de vivre une expérience inoubliable !🎉`);
-      } catch (error) {
-        console.error(`Erreur lors de l'envoi du message privé à ${user.tag}:`, error);
-      }
-    }
-  } catch (error) {
-    console.error('Erreur lors de l\'ajout de la réaction :', error);
-  }
-});
-
-// Gestion des membres entrant et sortant
-client.on('guildMemberAdd', (member) => guildMemberEvents.execute(member, 'add'));
-client.on('guildMemberRemove', (member) => guildMemberEvents.execute(member, 'remove'));
-
-// Gestion des commandes
-client.on('messageCreate', async (message) => {
-  if (message.author.bot || !message.content.startsWith(PREFIX)) return;
-
-  const args = message.content.slice(PREFIX.length).trim().split(/ +/);
-  const commandName = args.shift().toLowerCase();
-
-  const command = client.commands.get(commandName);
-  if (!command) return;
-
-  try {
-    await command.execute(message, args);
-    
-    // Suppression du message de commande après son exécution
-    if (message.deletable) {
-      try {
-        await message.delete();
-      } catch (deleteError) {
-        console.error(`Erreur lors de la suppression du message de commande: ${deleteError}`);
-      }
-    }
-  } catch (error) {
-    console.error(`Erreur lors de l'exécution de la commande ${commandName}:`, error);
-    await message.channel.send('Une erreur est survenue lors de l\'exécution de la commande.');
-  }
-});
-
-
-// Gestion des erreurs globales
-client.on('error', error => {
-  console.error('Erreur globale du client Discord:', error);
-});
-
-// Connexion du bot
-client.login(TOKEN).catch(error => {
-  console.error('Erreur lors de la connexion du bot:', error);
-});
+// Démarrage du bot
+startBot();
