@@ -28,15 +28,15 @@ function initDatabase() {
 
           const ranks = [
             { name: "Vagabond", xp: 0, emoji: "🌱", color: "#3498db" },
-            { name: "Débrouillard", xp: 100, emoji: "🔧", color: "#2ecc71" },
-            { name: "Cow-Boy", xp: 250, emoji: "🤠", color: "#e67e22" },
-            { name: "Justicier", xp: 500, emoji: "⚖️", color: "#9b59b6" },
-            { name: "Vétéran", xp: 1000, emoji: "🎖️", color: "#34495e" },
+            { name: "Débrouillard", xp: 300, emoji: "🔧", color: "#2ecc71" },
+            { name: "Cow-Boy", xp: 600, emoji: "🤠", color: "#e67e22" },
+            { name: "Justicier", xp: 1000, emoji: "⚖️", color: "#9b59b6" },
+            { name: "Vétéran", xp: 1500, emoji: "🎖️", color: "#34495e" },
             { name: "Seigneur des frontières", xp: 2000, emoji: "🏞️", color: "#16a085" },
-            { name: "Pistolero", xp: 3500, emoji: "🔫", color: "#c0392b" },
-            { name: "Régent des Plaines", xp: 5000, emoji: "👑", color: "#f1c40f" },
-            { name: "Légende de l'Ouest", xp: 7500, emoji: "🌟", color: "#8e44ad" },
-            { name: "Mythe Vivant", xp: 10000, emoji: "🏆", color: "#e74c3c" }
+            { name: "Pistolero", xp: 4000, emoji: "🔫", color: "#c0392b" },
+            { name: "Régent des Plaines", xp: 7000, emoji: "👑", color: "#f1c40f" },
+            { name: "Légende de l'Ouest", xp: 10000, emoji: "🌟", color: "#8e44ad" },
+            { name: "Mythe Vivant", xp: 30000, emoji: "🏆", color: "#e74c3c" }
           ];
 
           const insertRank = db.prepare("INSERT OR REPLACE INTO Ranks (name, xp, emoji, color) VALUES (?, ?, ?, ?)");
