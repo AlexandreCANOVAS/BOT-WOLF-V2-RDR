@@ -47,6 +47,21 @@ Le bot est déjà opérationnel avec les fonctionnalités suivantes :
 ```
   Possibilité de créer des messages en anonyme
 
+- **Système de message d'xp :**
+```
+-xp
+```
+permet de visualiser son niveau ainsi que sa progression
+
+```
+-rang
+```
+permet de voir les rangs proposer 
+
+mise en place d'une bdd SQlite pour stocker les données
+
+  système mit en place pour divertir et inciter les personnes à être actif sur le serveur 
+
 - **Mise en place de tickets dans différents salons :**
 
   Permet de créer des tickets pour différentes options
@@ -88,9 +103,9 @@ créer un `.env` avec dedans la propriété `DISCORD_TOKEN=` puis faire la comma
 node index.js
 ```
 
-## **Dernière mise à jour effectuée 10.01.2025**
+## **Dernière mise à jour effectuée 20.01.2025**
 
-Ajout des fonctionnalités de tickets + logs + message Anonyme
+Ajout système de message d'xp + bdd SQlite pour stockage
 
-Précédente Mise à jour : WOLF RP V2.2.2 (10.01.2025)  
-Mise à jour : WOLF RP V2.2.4 (19.01.2025)
+Précédente Mise à jour : WOLF RP V2.2.2 (20.01.2025)  
+Mise à jour : WOLF RP V2.2.4 (20.01.2025)
