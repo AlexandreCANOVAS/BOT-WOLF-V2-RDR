@@ -1,6 +1,6 @@
 const { EmbedBuilder } = require('discord.js');
 
-const XP_PER_MESSAGE = 10;
+const XP_PER_MESSAGE = 2;
 
 function createProgressBar(current, max) {
   const percentage = Math.min(Math.max(current / max, 0), 1);
