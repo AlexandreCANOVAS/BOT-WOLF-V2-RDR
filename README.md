@@ -6,21 +6,51 @@
 
 Le projet consiste à développer un bot Discord dédié au rôle-play de Red Dead Redemption (RDR). Ce bot utilise JavaScript et permet d'ajouter plusieurs fonctionnalités pour enrichir l'expérience RP au sein des serveurs. L'objectif est de créer un bot complet, interactif et facilement utilisable pour la gestion des sessions RP, des rôles et bien plus encore.
 
-## **Fonctionnalités actuelles**
+## **Fonctionnalités actuelles et commandes**
 
 Le bot est déjà opérationnel avec les fonctionnalités suivantes :
 
-- **Gestion des Rôles -accepter:**
+- **Gestion des Rôles :**
+  ```
+  -accepter
+  ```
+
   Attribution et gestion des rôles pour les joueurs en fonction de leurs actions ou de leur progression dans le RP.
 
-- **Message de lancement et de clôture du serveur RP -lancement et -clôture:**
+- **Message de lancement et de clôture du serveur RP :**
+```
+-lancement
+```
+
+```
+-clôture
+```
+
   Envoi de messages automatiques lors du lancement et de la clôture des sessions RP, avec un compte à rebours en direct.
 
-- **Message d'information pour prévenir les futures sessions RP -proposition session:**
+- **Message d'information pour prévenir les futures sessions RP :**
+```
+-proposition session
+```
+
   Un message d'information détaillant la date et l'heure de la prochaine session RP, afin de prévenir les joueurs à l'avance.
 
-- **Message de pré-lancement -session:**
+- **Message de pré-lancement :**
+```
+-session
+```
   Envoi d'un message quelques minutes avant le début de la session RP, avec les consignes à respecter pour bien débuter la session.
+
+- **Message Anonyme :**
+```
+-Anonymous
+```
+  Possibilité de créer des messages en anonyme
+
+- **Mise en place de tickets dans différents salons :**
+
+  Permet de créer des tickets pour différentes options
+
 
 - **Automatisation des messages de départs et d'arrivées :**
   Le bot automatise les messages de départs et d'arrivées des membres dans le serveur.
@@ -60,7 +90,7 @@ node index.js
 
 ## **Dernière mise à jour effectuée 10.01.2025**
 
-Suppression module_nodes 
+Ajout des fonctionnalités de tickets + logs + message Anonyme
 
-Précédente Mise à jour : WOLF RP V2.2.1 (17.12.2024)  
-Mise à jour : WOLF RP V2.2.2 (10.01.2025)
+Précédente Mise à jour : WOLF RP V2.2.2 (10.01.2025)  
+Mise à jour : WOLF RP V2.2.4 (19.01.2025)
