@@ -20,6 +20,12 @@ const logAnonymous = require('./events/logAnonymous');
 const messageXp = require('./events/messageXp');
 const rangCommand = require('./commands/rangCommand');
 const xpCommand = require('./commands/xpCommand');
+const resetDbCommand = require('./commands/resetdb.js');
+const resetUserCommand = require('./commands/resetUserCommand');
+const getXpCommand = require('./commands/getXpCommand');
+const leaderboardCommand = require('./commands/leaderboard');
+
+
 
 // Constantes
 const TOKEN = process.env.DISCORD_TOKEN;
@@ -55,6 +61,12 @@ function initializeCommands() {
   client.commands.set('anonymous', anonymousMessageCommand);
   client.commands.set('rang', rangCommand);
   client.commands.set('xp', xpCommand);
+  client.commands.set('resetdb', resetDbCommand);
+  client.commands.set('resetuser', resetUserCommand);
+  client.commands.set('getxp', getXpCommand);
+  client.commands.set('leaderboard', leaderboardCommand);
+
+
 }
 
 async function startBot() {
@@ -136,38 +148,49 @@ async function startBot() {
     client.on('guildMemberRemove', (member) => guildMemberEvents.execute(member, 'remove'));
 
     // Gestion des commandes
+
     client.on('messageCreate', async (message) => {
       if (message.author.bot || !message.content.startsWith(PREFIX)) return;
-
+    
       const args = message.content.slice(PREFIX.length).trim().split(/ +/);
       const commandName = args.shift().toLowerCase();
-
+    
       const command = client.commands.get(commandName);
       if (!command) return;
-
+    
       try {
-        if (commandName === 'xp' || commandName === 'rang') {
-          await command.execute(message, args, db);
+        let response;
+        if (commandName === 'xp' || commandName === 'rang' || commandName === 'resetdb' || commandName === 'getxp' || commandName === 'leaderboard') {
+          response = await command.execute(message, args, db);
         } else if (typeof command.execute === 'function') {
-          await command.execute(message, args);
+          response = await command.execute(message, args);
         } else {
           console.error(`La commande ${commandName} n'a pas de fonction execute.`);
           await message.channel.send('Cette commande n\'est pas correctement configurée.');
           return;
         }
         
-        if (message.deletable) {
-          try {
-            await message.delete();
-          } catch (deleteError) {
-            console.error(`Erreur lors de la suppression du message de commande: ${deleteError}`);
-          }
+        if (response) {
+          await message.channel.send(response);
+        }
+    
+        if (message.deletable && !message.deleted) {
+          await message.delete().catch(error => {
+            console.error(`Erreur lors de la suppression du message de commande: ${error}`);
+          });
         }
       } catch (error) {
         console.error(`Erreur lors de l'exécution de la commande ${commandName}:`, error);
-        await message.channel.send('Une erreur est survenue lors de l\'exécution de la commande.');
+        if (message.channel) {
+          await message.channel.send('Une erreur est survenue lors de l\'exécution de la commande.');
+        }
       }
     });
+    
+    
+    
+    
+    
 
     // Gestion des erreurs globales
     client.on('error', error => {
