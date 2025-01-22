@@ -29,14 +29,14 @@ function initDatabase() {
         const ranks = [
           { name: "Vagabond", xp: 0, emoji: "🌱", color: "#3498db" },
           { name: "Débrouillard", xp: 100, emoji: "🔧", color: "#2ecc71" },
-          { name: "Cow-Boy", xp: 250, emoji: "🤠", color: "#e67e22" },
+          { name: "Cow-Boy", xp: 300, emoji: "🤠", color: "#e67e22" },
           { name: "Justicier", xp: 500, emoji: "⚖️", color: "#9b59b6" },
           { name: "Vétéran", xp: 1000, emoji: "🎖️", color: "#34495e" },
           { name: "Seigneur des frontières", xp: 2000, emoji: "🏞️", color: "#16a085" },
           { name: "Pistolero", xp: 3500, emoji: "🔫", color: "#c0392b" },
           { name: "Régent des Plaines", xp: 5000, emoji: "👑", color: "#f1c40f" },
-          { name: "Légende de l'Ouest", xp: 7500, emoji: "🌟", color: "#8e44ad" },
-          { name: "Mythe Vivant", xp: 10000, emoji: "🏆", color: "#e74c3c" }
+          { name: "Légende de l'Ouest", xp: 10000, emoji: "🌟", color: "#8e44ad" },
+          { name: "Mythe Vivant", xp: 20000, emoji: "🏆", color: "#e74c3c" }
         ];
 
         const insertRank = db.prepare("INSERT OR REPLACE INTO Ranks (name, xp, emoji, color) VALUES (?, ?, ?, ?)");
@@ -45,6 +45,57 @@ function initDatabase() {
         });
         insertRank.finalize();
       });
+
+      function resetDatabase() {
+        return new Promise((resolve, reject) => {
+          db.serialize(() => {
+            db.run("DELETE FROM Users", (err) => {
+              if (err) return reject(err);
+            });
+
+            db.run("DELETE FROM Ranks", (err) => {
+              if (err) return reject(err);
+            });
+
+            const ranks = [
+              { name: "Vagabond", xp: 0, emoji: "🌱", color: "#3498db" },
+              { name: "Débrouillard", xp: 100, emoji: "🔧", color: "#2ecc71" },
+              { name: "Cow-Boy", xp: 300, emoji: "🤠", color: "#e67e22" },
+              { name: "Justicier", xp: 500, emoji: "⚖️", color: "#9b59b6" },
+              { name: "Vétéran", xp: 1000, emoji: "🎖️", color: "#34495e" },
+              { name: "Seigneur des frontières", xp: 2000, emoji: "🏞️", color: "#16a085" },
+              { name: "Pistolero", xp: 3500, emoji: "🔫", color: "#c0392b" },
+              { name: "Régent des Plaines", xp: 5000, emoji: "👑", color: "#f1c40f" },
+              { name: "Légende de l'Ouest", xp: 10000, emoji: "🌟", color: "#8e44ad" },
+              { name: "Mythe Vivant", xp: 20000, emoji: "🏆", color: "#e74c3c" }
+            ];
+
+            const insertRank = db.prepare("INSERT OR REPLACE INTO Ranks (name, xp, emoji, color) VALUES (?, ?, ?, ?)");
+            ranks.forEach(rank => {
+              insertRank.run(rank.name, rank.xp, rank.emoji, rank.color);
+            });
+            insertRank.finalize();
+          });
+
+          resolve();
+        });
+      }
+
+      function resetUserData(userId) {
+        return new Promise((resolve, reject) => {
+          db.run('UPDATE Users SET xp = 0, current_rank = "Vagabond" WHERE user_id = ?', [userId], function(err) {
+            if (err) return reject(err);
+            if (this.changes === 0) {
+              db.run('INSERT INTO Users (user_id, xp, current_rank) VALUES (?, 0, "Vagabond")', [userId], function(err) {
+                if (err) return reject(err);
+                resolve(this.lastID);
+              });
+            } else {
+              resolve(this.changes);
+            }
+          });
+        });
+      }
 
       resolve({
         getUser: (userId) => {
@@ -78,7 +129,18 @@ function initDatabase() {
               resolve();
             });
           });
-        }
+        },
+        getAllUsers: () => {
+          return new Promise((resolve, reject) => {
+            db.all('SELECT * FROM Users ORDER BY xp DESC', [], (err, rows) => {
+              if (err) return reject(err);
+              resolve(rows);
+            });
+          });
+        },
+
+        resetDatabase: resetDatabase,
+        resetUserData: resetUserData
       });
     });
   });

@@ -6,6 +6,7 @@ module.exports = {
   async execute(message, args, db) {
     try {
       const ranks = await db.getAllRanks();
+      console.log('Rangs récupérés:', ranks);
 
       const embed = new EmbedBuilder()
         .setColor('#1E90FF')
