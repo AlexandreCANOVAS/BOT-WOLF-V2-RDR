@@ -1,6 +1,13 @@
 const { EmbedBuilder } = require('discord.js');
 
 const XP_PER_MESSAGE = 2;
+const SPAM_THRESHOLD = 2; // Modifié pour se déclencher après 2 messages
+const SPAM_TIME_WINDOW = 5000; // Réduit à 5 secondes pour être plus permissif
+const COOLDOWN_PERIOD = 2000;
+
+const userMessageCounts = new Map();
+const userLastMessageTime = new Map();
+const userWarnings = new Map();
 
 function createProgressBar(current, max) {
   const percentage = Math.min(Math.max(current / max, 0), 1);
@@ -11,7 +18,9 @@ function createProgressBar(current, max) {
 
 module.exports = {
   name: 'messageXp',
-  execute(client, db) {
+  async execute(client, db) {
+    const ranks = await db.getAllRanks();
+
     async function assignVagabondRole(member) {
       const vagabondRole = member.guild.roles.cache.find(r => r.name === "Vagabond");
       if (vagabondRole) {
@@ -33,8 +42,89 @@ module.exports = {
     client.on('messageCreate', async (message) => {
       if (message.author.bot) return;
 
+      const userId = message.author.id;
+      const now = Date.now();
+
+      // Vérification anti-spam
+      if (!userMessageCounts.has(userId)) {
+        userMessageCounts.set(userId, []);
+      }
+      const userMessages = userMessageCounts.get(userId);
+      userMessages.push(now);
+
+      while (userMessages.length > 0 && userMessages[0] < now - SPAM_TIME_WINDOW) {
+        userMessages.shift();
+      }
+
+      if (userMessages.length > SPAM_THRESHOLD) {
+        if (!userWarnings.has(userId)) {
+          userWarnings.set(userId, 1);
+          const warningEmbed = new EmbedBuilder()
+            .setColor('#FFA500')
+            .setTitle('⚠️ Avertissement')
+            .setDescription(`Attention, ${message.author} ! Vous envoyez des messages trop rapidement.`)
+            .addFields(
+              { name: 'Conséquence', value: 'Si vous continuez, votre rang et votre rôle XP seront réinitialisés.' },
+              { name: 'Conseil', value: 'Veuillez ralentir le rythme de vos messages.' }
+            )
+            .setFooter({ text: 'Premier avertissement' })
+            .setTimestamp();
+          await message.reply({ embeds: [warningEmbed] });
+          return;
+        } else {
+          const warnings = userWarnings.get(userId);
+          if (warnings >= 2) {
+            await db.resetUserData(userId);
+            const vagabondRole = message.guild.roles.cache.find(r => r.name === "Vagabond");
+            if (vagabondRole) {
+              const userRoles = message.member.roles.cache;
+              const nonXpRoles = userRoles.filter(role => 
+                role.name !== vagabondRole.name && 
+                !ranks.some(rank => rank.name === role.name)
+              );
+              nonXpRoles.set(vagabondRole.id, vagabondRole);
+              await message.member.roles.set(nonXpRoles);
+            }
+            const resetEmbed = new EmbedBuilder()
+              .setColor('#FF0000')
+              .setTitle('🚫 Réinitialisation')
+              .setDescription(`${message.author}, votre rang et votre rôle XP ont été réinitialisés.`)
+              .addFields(
+                { name: 'Raison', value: 'Spam excessif détecté' },
+                { name: 'Action', value: 'Votre progression XP a été remise à zéro et votre rôle a été réinitialisé à "Vagabond".' }
+              )
+              .setFooter({ text: 'Réinitialisation effectuée' })
+              .setTimestamp();
+            await message.reply({ embeds: [resetEmbed] });
+            userWarnings.delete(userId);
+            return;
+          } else {
+            userWarnings.set(userId, warnings + 1);
+            const finalWarningEmbed = new EmbedBuilder()
+              .setColor('#FF0000')
+              .setTitle('🚨 Dernier Avertissement')
+              .setDescription(`${message.author}, ceci est votre dernier avertissement !`)
+              .addFields(
+                { name: 'Avertissement', value: 'Votre rang et votre rôle XP seront réinitialisés si vous continuez à spammer.' },
+                { name: 'Conseil', value: 'Veuillez immédiatement cesser d\'envoyer des messages rapidement.' }
+              )
+              .setFooter({ text: 'Dernier avertissement avant réinitialisation' })
+              .setTimestamp();
+            await message.reply({ embeds: [finalWarningEmbed] });
+            return;
+          }
+        }
+      }
+
+
+      // Vérification du cooldown
+      const lastMessageTime = userLastMessageTime.get(userId) || 0;
+      if (now - lastMessageTime < COOLDOWN_PERIOD) {
+        return; // Ignorer le message si le cooldown n'est pas terminé
+      }
+      userLastMessageTime.set(userId, now);
+
       try {
-        const userId = message.author.id;
         let user = await db.getUser(userId);
 
         let currentXp = user ? user.xp : 0;
