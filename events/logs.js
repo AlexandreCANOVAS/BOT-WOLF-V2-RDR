@@ -7,16 +7,27 @@ module.exports = {
     if (!logChannel) return console.log('Canal de logs non trouvé');
 
     const createEmbed = (title, color, description, fields = []) => {
-      return new EmbedBuilder()
-        .setTitle(`🔍 ${title}`)
+      const embed = new EmbedBuilder()
+        .setTitle(`🔍 ${title}`.slice(0, 256))
         .setColor(color)
-        .setDescription(description)
-        .addFields(fields)
+        .setDescription(description.slice(0, 4096))
         .setFooter({ 
           text: 'Système de Surveillance du Serveur', 
           iconURL: client.user.displayAvatarURL() 
         })
         .setTimestamp();
+
+      const safeFields = fields.map(field => ({
+        name: (field.name || 'Champ').slice(0, 256),
+        value: (field.value || '-').toString().slice(0, 1024),
+        inline: !!field.inline
+      }));
+
+      if (safeFields.length > 0) {
+        embed.addFields(safeFields);
+      }
+
+      return embed;
     };
 
     client.on('channelCreate', channel => {
@@ -60,49 +71,46 @@ module.exports = {
       const embed = createEmbed('Message Supprimé', '#FF0000', `Un message a été supprimé dans ${message.channel}.`, [
         { name: '👤 Auteur', value: message.author.tag, inline: true },
         { name: '📍 Salon', value: `#${message.channel.name}`, inline: true },
-        { name: '💬 Contenu', value: `\`\`\`${message.content.substring(0, 1000)}\`\`\`` }
+        { name: '💬 Contenu', value: message.content.substring(0, 1000) || 'Contenu vide' }
       ]);
       logChannel.send({ embeds: [embed] });
     });
 
     client.on('messageUpdate', (oldMessage, newMessage) => {
-        if (oldMessage.author.bot) return;
-        if (oldMessage.content === newMessage.content) return;
+      if (oldMessage.author.bot) return;
+      if (oldMessage.content === newMessage.content) return;
       
-        const highlightDifferences = (oldContent, newContent) => {
-          let oldHighlighted = oldContent;
-          let newHighlighted = newContent;
-          
-          const words = oldContent.split(' ');
-          words.forEach(word => {
-            if (!newContent.includes(word)) {
-              oldHighlighted = oldHighlighted.replace(word, `**[${word}]**`);
-            }
-          });
-          
-          const newWords = newContent.split(' ');
-          newWords.forEach(word => {
-            if (!oldContent.includes(word)) {
-              newHighlighted = newHighlighted.replace(word, `**[${word}]**`);
-            }
-          });
-          
-          return [oldHighlighted, newHighlighted];
-        };
+      const highlightDifferences = (oldContent, newContent) => {
+        let oldHighlighted = oldContent;
+        let newHighlighted = newContent;
+        
+        const words = oldContent.split(' ');
+        words.forEach(word => {
+          if (!newContent.includes(word)) {
+            oldHighlighted = oldHighlighted.replace(word, `**[${word}]**`);
+          }
+        });
+        
+        const newWords = newContent.split(' ');
+        newWords.forEach(word => {
+          if (!oldContent.includes(word)) {
+            newHighlighted = newHighlighted.replace(word, `**[${word}]**`);
+          }
+        });
+        
+        return [oldHighlighted, newHighlighted];
+      };
       
-        const [oldFormatted, newFormatted] = highlightDifferences(oldMessage.content, newMessage.content);
+      const [oldFormatted, newFormatted] = highlightDifferences(oldMessage.content, newMessage.content);
       
-        const embed = createEmbed('Message Modifié', '#FFFF00', `Un message a été modifié dans ${oldMessage.channel}.`, [
-          { name: '👤 Auteur', value: oldMessage.author.tag, inline: true },
-          { name: '📍 Salon', value: `#${oldMessage.channel.name}`, inline: true },
-          { name: '📜 Ancien contenu', value: oldFormatted.substring(0, 1024) },
-          { name: '📝 Nouveau contenu', value: newFormatted.substring(0, 1024) }
-        ]);
-        logChannel.send({ embeds: [embed] });
-      });
-      
-      
-      
+      const embed = createEmbed('Message Modifié', '#FFFF00', `Un message a été modifié dans ${oldMessage.channel}.`, [
+        { name: '👤 Auteur', value: oldMessage.author.tag, inline: true },
+        { name: '📍 Salon', value: `#${oldMessage.channel.name}`, inline: true },
+        { name: '📜 Ancien contenu', value: oldFormatted.substring(0, 1024) || 'Contenu vide' },
+        { name: '📝 Nouveau contenu', value: newFormatted.substring(0, 1024) || 'Contenu vide' }
+      ]);
+      logChannel.send({ embeds: [embed] });
+    });
 
     client.on('roleCreate', role => {
       const embed = createEmbed('Nouveau Rôle Créé', '#00FF00', 'Un nouveau rôle a été créé sur le serveur.', [
