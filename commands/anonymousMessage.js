@@ -27,7 +27,7 @@ module.exports = {
         })
         .setTimestamp();
       
-      return message.channel.send({ embeds: [usageEmbed] });
+      return { embeds: [usageEmbed] };
     }
 
     const anonymousMessage = args.join(' ');
@@ -48,15 +48,17 @@ module.exports = {
       // Émettre l'événement personnalisé pour le logging
       message.client.emit('anonymousMessage', message, anonymousMessage);
 
+      
     } catch (error) {
       console.error('Erreur lors de l\'envoi du message anonyme:', error);
-      await message.channel.send('Une erreur est survenue lors de l\'envoi du message anonyme.').catch(console.error);
+      return 'Une erreur est survenue lors de l\'envoi du message anonyme.';
     } finally {
       if (webhook) {
         try {
-          await webhook.delete();
+          
         } catch (error) {
           console.error('Erreur lors de la suppression du webhook:', error);
+          await webhook.delete();
         }
       }
     }

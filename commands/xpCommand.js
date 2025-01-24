@@ -45,10 +45,11 @@ module.exports = {
           .setFooter({ text: '🤠 Chevauchez vers la gloire, cowboy!' })
           .setTimestamp();
 
-        await message.channel.send({ embeds: [embed] });
+        await message.author.send({ embeds: [embed] });
+        return "Vos informations XP ont été envoyées en message privé.";
       } catch (error) {
         console.error('Erreur lors de l\'exécution de la commande XP:', error);
-        await message.reply("Une erreur s'est produite lors de la récupération de vos données XP.");
+        return "Une erreur s'est produite lors de la récupération de vos données XP. Assurez-vous que vos messages privés sont ouverts.";
       }
     }
 };

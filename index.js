@@ -26,7 +26,6 @@ const getXpCommand = require('./commands/getXpCommand');
 const leaderboardCommand = require('./commands/leaderboard');
 
 
-
 // Constantes
 const TOKEN = process.env.DISCORD_TOKEN;
 const PREFIX = '-';
@@ -65,8 +64,6 @@ function initializeCommands() {
   client.commands.set('resetuser', resetUserCommand);
   client.commands.set('getxp', getXpCommand);
   client.commands.set('leaderboard', leaderboardCommand);
-
-
 }
 
 async function startBot() {
@@ -147,8 +144,8 @@ async function startBot() {
     client.on('guildMemberAdd', (member) => guildMemberEvents.execute(member, 'add'));
     client.on('guildMemberRemove', (member) => guildMemberEvents.execute(member, 'remove'));
 
-    // Gestion des commandes
-
+    
+    
     client.on('messageCreate', async (message) => {
       if (message.author.bot || !message.content.startsWith(PREFIX)) return;
     
@@ -160,41 +157,63 @@ async function startBot() {
     
       try {
         let response;
-        if (commandName === 'xp' || commandName === 'rang' || commandName === 'resetdb' || commandName === 'getxp' || commandName === 'leaderboard') {
+        if (commandName === 'xp' || commandName === 'rang' || commandName === 'resetdb' || commandName === 'getxp' || commandName === 'leaderboard' || commandName === 'resetuser') {
           response = await command.execute(message, args, db);
-        } else if (typeof command.execute === 'function') {
-          response = await command.execute(message, args);
         } else {
-          console.error(`La commande ${commandName} n'a pas de fonction execute.`);
-          await message.channel.send('Cette commande n\'est pas correctement configurée.');
-          return;
+          response = await command.execute(message, args);
         }
         
         if (response) {
-          await message.channel.send(response);
+          if (typeof response === 'string') {
+            await message.channel.send({ content: response });
+          } else if (typeof response === 'object') {
+            if (response.embeds) {
+              await message.channel.send({ embeds: response.embeds });
+            } else if (response.content) {
+              await message.channel.send({ content: response.content });
+            } else {
+              await message.channel.send({ content: JSON.stringify(response) });
+            }
+          }
         }
     
         if (message.deletable && !message.deleted) {
-          await message.delete().catch(error => {
-            console.error(`Erreur lors de la suppression du message de commande: ${error}`);
-          });
+          setTimeout(() => {
+            message.delete().catch(error => {
+              console.error(`Erreur lors de la suppression du message de commande: ${error}`);
+            });
+          }, 500);
         }
       } catch (error) {
         console.error(`Erreur lors de l'exécution de la commande ${commandName}:`, error);
-        if (message.channel) {
-          await message.channel.send('Une erreur est survenue lors de l\'exécution de la commande.');
-        }
+        await message.channel.send({ content: 'Une erreur est survenue lors de l\'exécution de la commande.' });
       }
     });
     
     
     
-    
-    
 
-    // Gestion des erreurs globales
+
+    // Gestion des déconnexions
+    client.on('disconnect', (event) => {
+      console.log('Bot déconnecté de Discord, tentative de reconnexion...');
+      client.login(TOKEN).catch(error => {
+        console.error('Erreur lors de la tentative de reconnexion:', error);
+      });
+    });
+
+    // Gestion des erreurs de connexion
     client.on('error', error => {
-      console.error('Erreur globale du client Discord:', error);
+      if (error.message.includes('getaddrinfo ENOTFOUND')) {
+        console.error('Erreur de connexion, tentative de reconnexion dans 5 secondes...');
+        setTimeout(() => {
+          client.login(TOKEN).catch(error => {
+            console.error('Erreur lors de la tentative de reconnexion:', error);
+          });
+        }, 5000);
+      } else {
+        console.error('Erreur du client Discord:', error);
+      }
     });
 
     // Connexion du bot
