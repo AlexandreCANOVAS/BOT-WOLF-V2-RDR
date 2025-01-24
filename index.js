@@ -24,6 +24,8 @@ const resetDbCommand = require('./commands/resetdb.js');
 const resetUserCommand = require('./commands/resetUserCommand');
 const getXpCommand = require('./commands/getXpCommand');
 const leaderboardCommand = require('./commands/leaderboard');
+const rankAttributeCommand = require('./commands/rankAttribute');
+
 
 
 // Constantes
@@ -64,6 +66,7 @@ function initializeCommands() {
   client.commands.set('resetuser', resetUserCommand);
   client.commands.set('getxp', getXpCommand);
   client.commands.set('leaderboard', leaderboardCommand);
+  client.commands.set('rankattribute', rankAttributeCommand);
 }
 
 async function startBot() {
@@ -157,7 +160,7 @@ async function startBot() {
     
       try {
         let response;
-        if (commandName === 'xp' || commandName === 'rang' || commandName === 'resetdb' || commandName === 'getxp' || commandName === 'leaderboard' || commandName === 'resetuser') {
+        if (commandName === 'xp' || commandName === 'rang' || commandName === 'resetdb' || commandName === 'getxp' || commandName === 'leaderboard' || commandName === 'resetuser' || commandName === 'rankattribute') {
           response = await command.execute(message, args, db);
         } else {
           response = await command.execute(message, args);

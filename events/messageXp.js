@@ -1,8 +1,8 @@
 const { EmbedBuilder } = require('discord.js');
 
 const XP_PER_MESSAGE = 2;
-const SPAM_THRESHOLD = 2; // Modifié pour se déclencher après 2 messages
-const SPAM_TIME_WINDOW = 5000; // Réduit à 5 secondes pour être plus permissif
+const SPAM_THRESHOLD = 2;
+const SPAM_TIME_WINDOW = 5000;
 const COOLDOWN_PERIOD = 2000;
 
 const userMessageCounts = new Map();
@@ -45,7 +45,6 @@ module.exports = {
       const userId = message.author.id;
       const now = Date.now();
 
-      // Vérification anti-spam
       if (!userMessageCounts.has(userId)) {
         userMessageCounts.set(userId, []);
       }
@@ -116,11 +115,9 @@ module.exports = {
         }
       }
 
-
-      // Vérification du cooldown
       const lastMessageTime = userLastMessageTime.get(userId) || 0;
       if (now - lastMessageTime < COOLDOWN_PERIOD) {
-        return; // Ignorer le message si le cooldown n'est pas terminé
+        return;
       }
       userLastMessageTime.set(userId, now);
 
@@ -139,12 +136,15 @@ module.exports = {
         }
 
         const ranks = await db.getAllRanks();
+        const maxRank = ranks[ranks.length - 1];
 
-        const oldRank = ranks.filter(rank => rank.xp <= currentXp).pop();
-        const newRank = ranks.filter(rank => rank.xp <= newXp).pop();
+        let newRank = ranks.filter(rank => rank.xp <= newXp).pop();
+        if (newXp >= maxRank.xp) {
+          newRank = maxRank;
+        }
 
-        if (newRank.name !== oldRank.name) {
-          const oldRole = message.guild.roles.cache.find(r => r.name === oldRank.name);
+        if (newRank.name !== currentRank) {
+          const oldRole = message.guild.roles.cache.find(r => r.name === currentRank);
           const newRole = message.guild.roles.cache.find(r => r.name === newRank.name);
           
           if (oldRole && newRole) {
@@ -153,17 +153,26 @@ module.exports = {
             
             await db.insertUser(userId, newXp, newRank.name);
             
-            const nextRank = ranks.find(rank => rank.xp > newXp);
-            const progressBar = createProgressBar(newXp - newRank.xp, nextRank ? nextRank.xp - newRank.xp : 0);
+            let progressBar, nextRankInfo;
+            if (newRank === maxRank) {
+              const xpSinceMaxRank = newXp - maxRank.xp;
+              const nextMilestone = Math.ceil(newXp / 1000) * 1000;
+              progressBar = createProgressBar(xpSinceMaxRank, nextMilestone - maxRank.xp);
+              nextRankInfo = `🌠 Rang Maximum Atteint! Prochain palier: ${nextMilestone} XP`;
+            } else {
+              const nextRank = ranks.find(rank => rank.xp > newXp);
+              progressBar = createProgressBar(newXp - newRank.xp, nextRank.xp - newRank.xp);
+              nextRankInfo = `${nextRank.emoji} **${nextRank.name}** (${nextRank.xp} XP)`;
+            }
             
             const embed = new EmbedBuilder()
               .setColor(newRank.color)
-              .setTitle(`${newRank.emoji} Nouveau Rang Atteint: ${newRank.name}`)
-              .setDescription(`Félicitations, ${message.author}! Vous avez gravi les échelons de l'Ouest sauvage!`)
+              .setTitle(`${newRank.emoji} ${newRank === maxRank ? 'Progression XP' : 'Nouveau Rang Atteint'}: ${newRank.name}`)
+              .setDescription(`Félicitations, ${message.author}! ${newRank === maxRank ? 'Vous continuez à progresser au-delà du rang maximum!' : 'Vous avez gravi les échelons de l\'Ouest sauvage!'}`)
               .addFields(
                 { name: 'Rang Actuel', value: `${newRank.emoji} **${newRank.name}**`, inline: true },
                 { name: 'XP Total', value: `\`${newXp} XP\``, inline: true },
-                { name: 'Prochain Rang', value: nextRank ? `${nextRank.emoji} **${nextRank.name}** (${nextRank.xp} XP)` : '🌠 Rang Maximum Atteint!', inline: true },
+                { name: newRank === maxRank ? 'Prochain Palier' : 'Prochain Rang', value: nextRankInfo, inline: true },
                 { name: 'Progression', value: progressBar }
               )
               .setFooter({ text: 'Continuez à explorer les plaines pour gagner plus d\'XP!' })
@@ -177,7 +186,7 @@ module.exports = {
               await message.channel.send({ content: `${message.author}`, embeds: [embed] });
             }
           } else {
-            console.error(`Les rôles ${oldRank.name} ou ${newRank.name} n'existent pas sur le serveur.`);
+            console.error(`Les rôles ${currentRank} ou ${newRank.name} n'existent pas sur le serveur.`);
           }
         }
       } catch (error) {
