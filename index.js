@@ -27,6 +27,8 @@ const getXpCommand = require('./commands/getXpCommand');
 const leaderboardCommand = require('./commands/leaderboard');
 const rankAttributeCommand = require('./commands/rankAttribute');
 const roleReactionIllegal = require('./features/roleReactionIllegal');
+const identityFeature = require('./features/identity.js');
+
 
 
 
@@ -71,6 +73,7 @@ function initializeCommands() {
   client.commands.set('getxp', getXpCommand);
   client.commands.set('leaderboard', leaderboardCommand);
   client.commands.set('rankattribute', rankAttributeCommand);
+  
 }
 
 async function startBot() {
@@ -90,36 +93,47 @@ async function startBot() {
       logs.execute(client);
       logAnonymous.execute(client);
       messageXp.execute(client, db);
+      identityFeature.sendMessage(client);
     });
 
     // Gestion des interactions
-    client.on('interactionCreate', async (interaction) => {
-      if (!interaction.isButton() && !interaction.isStringSelectMenu()) return;
-
-      try {
-        if (interaction.customId === 'create_ticket') {
-          await ticketHandler.createTicket(interaction);
-        } else if (interaction.customId === 'close_ticket') {
-          await handleCloseTicket(interaction);
-        } else if (interaction.customId === 'create_telegram_ticket') {
-          await telegramHandler.handleTelegramTicketCreation(interaction);
-        } else if (interaction.customId.startsWith('select_telegram_recipient_')) {
-          await telegramHandler.createTelegramTicket(interaction);
-        } else if (interaction.customId === 'close_telegram_ticket') {
-          await telegramHandler.closeTelegramTicket(interaction);
-        } else if (interaction.customId === 'create_mediateur_ticket') {
-          await ticketMediator.createTicket(interaction);
-        } else if (interaction.customId === 'close_mediateur_ticket') {
-          await ticketMediator.closeTicket(interaction);
-        }
-      } catch (error) {
-        console.error('Erreur lors de la gestion de l\'interaction:', error);
-        await interaction.reply({
-          content: 'Une erreur est survenue lors du traitement de votre demande.',
-          ephemeral: true
-        });
+client.on('interactionCreate', async (interaction) => {
+  try {
+    if (interaction.isCommand()) {
+      // Gestion des commandes slash
+    } else if (interaction.isButton()) {
+      if (interaction.customId === 'open_identity_form') {
+        await identityFeature.handleButton(interaction);
+      } else if (interaction.customId === 'create_ticket') {
+        await ticketHandler.createTicket(interaction);
+      } else if (interaction.customId === 'close_ticket') {
+        await handleCloseTicket(interaction);
+      } else if (interaction.customId === 'create_telegram_ticket') {
+        await telegramHandler.handleTelegramTicketCreation(interaction);
+      } else if (interaction.customId === 'create_mediateur_ticket') {
+        await ticketMediator.createTicket(interaction);
+      } else if (interaction.customId === 'close_mediateur_ticket') {
+        await ticketMediator.closeTicket(interaction);
       }
+    } else if (interaction.isModalSubmit()) {
+      if (interaction.customId === 'identity_form') {
+        await identityFeature.handleModal(interaction);
+      }
+    } else if (interaction.isStringSelectMenu()) {
+      if (interaction.customId.startsWith('select_telegram_recipient_')) {
+        await telegramHandler.createTelegramTicket(interaction);
+      }
+    }
+  } catch (error) {
+    console.error('Erreur lors de la gestion de l\'interaction:', error);
+    await interaction.reply({
+      content: 'Une erreur est survenue lors du traitement de votre demande.',
+      ephemeral: true
     });
+  }
+});
+
+
 
     // Gestion des réactions d'ajout de rôle
     client.on('messageReactionAdd', async (reaction, user) => {
