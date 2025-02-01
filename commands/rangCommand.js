@@ -9,17 +9,20 @@ module.exports = {
       console.log('Rangs récupérés:', ranks);
 
       const embed = new EmbedBuilder()
-        .setColor('#1E90FF')
-        .setTitle('🏅 La Légende du Far West 🏅')
-        .setDescription('Gravissez les échelons et inscrivez votre nom dans l\'histoire de l\'Ouest !')
+        .setColor('#FFD700')
+        .setTitle('🌟 La Grande Épopée du Far West 🌟')
+        .setDescription('Tracez votre chemin à travers les plaines sauvages et devenez une légende vivante !')
+        .setThumbnail('https://i.imgur.com/rVVeIZP.png')
         .addFields(
-          ranks.map((rank, index) => ({
-            name: `\n${rank.emoji} __**${rank.name.toUpperCase()}**__`,
-            value: `**XP requis:** ${rank.xp}\n${index < ranks.length - 1 ? `**Prochain palier:** ${ranks[index + 1].xp - rank.xp} XP` : '**Rang maximal atteint ! Vous êtes une légende vivante !**'}\n`,
+          { name: '\u200B', value: '🏆 __**Tableau des Rangs**__ 🏆' },
+          ...ranks.map((rank, index) => ({
+            name: `${rank.emoji} **${rank.name}**`,
+            value: `> XP requis: **${rank.xp}**\n> ${index < ranks.length - 1 ? `Prochain palier: *${ranks[index + 1].xp - rank.xp} XP*` : '🎖️ *Rang suprême atteint !*'}`,
             inline: false
           }))
         )
-        .setFooter({ text: '🤠 Que votre légende résonne à travers les plaines, cowboy !' })
+        
+        .setFooter({ text: '🤠 Que votre légende résonne à travers les canyons, intrépide aventurier !' })
         .setTimestamp();
 
       await message.channel.send({ embeds: [embed] });

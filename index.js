@@ -3,6 +3,7 @@ const { Client, GatewayIntentBits, Collection } = require('discord.js');
 const { init } = require('./database.js');
 
 // Imports des commandes et fonctionnalités
+const { EmbedBuilder } = require('discord.js');
 const sessionCommand = require('./commands/sessionCommand');
 const propositionSessionCommand = require('./commands/propositionSessionCommand');
 const lancementCommand = require('./commands/lancementCommand');
@@ -25,6 +26,8 @@ const resetUserCommand = require('./commands/resetUserCommand');
 const getXpCommand = require('./commands/getXpCommand');
 const leaderboardCommand = require('./commands/leaderboard');
 const rankAttributeCommand = require('./commands/rankAttribute');
+const roleReactionIllegal = require('./features/roleReactionIllegal');
+
 
 
 
@@ -36,7 +39,8 @@ const ROLES = {
   RP_ECRIT: '📝 | RP écrit',
   IMMIGRE: '🗺| Immigré',
   RESIDENT: '🏠| Résident',
-  RP_VOCAL: '🎙 | RP vocal'
+  RP_VOCAL: '🎙 | RP vocal',
+  ILLEGAL: '🏴‍☠️ | Illégal'
 };
 
 // Création du client Discord
@@ -79,6 +83,7 @@ async function startBot() {
       initializeCommands();
       voteTopServeur.startRecurringMessages(client);
       roleReaction.sendMessage(client);
+      roleReactionIllegal.sendMessage(client);
       ticketHandler.sendTicketMessage(client);
       telegramHandler.sendTelegramMessage(client);
       ticketMediator.sendTicketMessage(client);
@@ -138,6 +143,34 @@ async function startBot() {
             console.error(`Erreur lors de l'envoi du message privé à ${user.tag}:`, error);
           }
         }
+
+        if (reaction.emoji.name === '🏴‍☠️') {
+          const role = reaction.message.guild.roles.cache.find(r => r.name === ROLES.ILLEGAL);
+          if (!role) return console.log(`Le rôle '${ROLES.ILLEGAL}' n'a pas été trouvé.`);
+        
+          await member.roles.add(role);
+          console.log(`${user.tag} a reçu le rôle ${ROLES.ILLEGAL}`);
+        
+          try {
+            const embed = new EmbedBuilder()
+              .setColor(0x800000)
+              .setTitle(`🏴‍☠️ Bienvenue dans l'ombre, ${user.username} ! 🏴‍☠️`)
+              .setDescription(`Vous avez reçu le rôle **${ROLES.ILLEGAL}**. L'univers illégal du serveur s'ouvre à vous !`)
+              .addFields(
+                { name: '🎭 Votre nouveau statut', value: 'Vous avez maintenant accès à toutes les activités illégales du RP. Un monde de possibilités s\'offre à vous !' },
+                { name: '⚠️ Attention', value: 'Rappelez-vous, avec de grands pouvoirs viennent de grandes responsabilités. Restez prudent dans vos activités.' },
+                { name: '🕵️ Prochaines étapes', value: 'Explorez les canaux réservés, nouez des alliances, et plongez dans l\'intrigue !' }
+              )
+              .setFooter({ text: 'La nuit est sombre et pleine de dangers... Bonne chance !' })
+              .setTimestamp();
+        
+            await member.send({ embeds: [embed] });
+          } catch (error) {
+            console.error(`Erreur lors de l'envoi du message privé à ${user.tag}:`, error);
+          }
+        }
+        
+        
       } catch (error) {
         console.error('Erreur lors de l\'ajout de la réaction :', error);
       }
